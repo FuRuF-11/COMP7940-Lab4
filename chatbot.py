@@ -67,6 +67,19 @@ def add_command(message):
     except (IndexError, ValueError):
         bot.reply_to(message, 'Usage: /add <keyword>')
 
+@bot.message_handler(commands=['hello'])
+def hello_command(message):
+    """Send a greeting when the command /hello is issued."""
+    try:
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            bot.reply_to(message, 'Usage: /hello <name>')
+            return
+        name = command_parts[1]  
+        bot.reply_to(message, f'Good day, {name}!')
+    except Exception as e:
+        bot.reply_to(message, 'Usage: /hello <name>')
+
 def main():
     # Start the bot
     logging.info("Bot started...")
