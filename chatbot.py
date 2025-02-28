@@ -1,66 +1,76 @@
-from telegram import Update
-from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackContext)
+import telebot
 import configparser
 import logging
 import redis
+from ChatGPT_HKBU import HKBU_ChatGPT
 
+# Global instances
 global redis1
+global chatgpt
 
-def echo(update, context):
-    reply_message = update.message.text.upper()
-    logging.info("Update: " + str(update))
-    logging.info("context: " + str(context))
-    context.bot.send_message(chat_id=update.effective_chat.id, text= reply_message)
+# Load config
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-def help_command(update: Update, context: CallbackContext) -> None:
+# Initialize bot
+bot = telebot.TeleBot(config['TELEGRAM']['ACCESS_TOKEN'])
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# Initialize Redis
+redis1 = redis.Redis(
+    host=config['REDIS']['HOST'],
+    password=config['REDIS']['PASSWORD'],
+    port=config['REDIS']['REDISPORT'],
+    decode_responses=config['REDIS']['DECODE_RESPONSE'],
+    username=config['REDIS']['USER_NAME']
+)
+
+# Initialize ChatGPT
+chatgpt = HKBU_ChatGPT(config)
+
+# ChatGPT handler for normal messages
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_message(message):
+    if message.text.startswith('/'): # Skip commands
+        return
+    
+    # Get response from ChatGPT
+    reply_message = chatgpt.submit(message.text)
+    logging.info(f"Message: {message}")
+    bot.reply_to(message, reply_message)
+
+# Help command handler
+@bot.message_handler(commands=['help'])
+def help_command(message):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Helping you helping you.')
+    bot.reply_to(message, 'Helping you helping you.')
 
-def add(update: Update, context: CallbackContext) -> None:
+# Add command handler
+@bot.message_handler(commands=['add'])
+def add_command(message):
     """Send a message when the command /add is issued."""
     try:
-        global redis1
-        logging.info(context.args[0])
-        msg = context.args[0] # /add keyword <-- this should store the keyword
+        # Split message text to get the keyword after /add
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            raise IndexError
+            
+        msg = command_parts[1]  # Get the keyword after /add
         redis1.incr(msg)
-        update.message.reply_text('You have said ' + msg + ' for ' +
-        redis1.get(msg).decode('UTF-8') + ' times.')
+        count = redis1.get(msg).decode('UTF-8')
+        bot.reply_to(message, f'You have said {msg} for {count} times.')
     except (IndexError, ValueError):
-        update.message.reply_text('Usage: /add <keyword>')
+        bot.reply_to(message, 'Usage: /add <keyword>')
 
 def main():
-    # Load your token and create an Updater for your Bot
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    updater = Updater(token=(config['TELEGRAM']['ACCESS_TOKEN']), use_context=True)
-    dispatcher = updater.dispatcher
-    global redis1
-    redis1 = redis.Redis(host=(config['REDIS']['HOST']),
-        password=(config['REDIS']['PASSWORD']),
-        port=(config['REDIS']['REDISPORT']),
-    decode_responses=(config['REDIS']['DECODE_RESPONSE']),
-    username=(config['REDIS']['USER_NAME']))
-    
-    # You can set this logging module, so you will know when
-    # and why things do not work as expected Meanwhile, update your config.ini as:
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
-    
-    # register a dispatcher to handle message: here we register an echo dispatcher
-    echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-    dispatcher.add_handler(echo_handler)
-    
-    # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("add", add))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    
-    # To start the bot:
-    updater.start_polling()
-    updater.idle()
+    # Start the bot
+    logging.info("Bot started...")
+    bot.infinity_polling()
 
-
-
-        
-        
-if __name__== "__main__":
+if __name__ == "__main__":
     main()
