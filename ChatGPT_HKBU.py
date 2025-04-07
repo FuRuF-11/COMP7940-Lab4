@@ -27,10 +27,10 @@ def get_current_weather(location:str):
         
         weather_info = {
         "location": location,
-        "weather": response["result"]["text"],
-        "temperature": response["result"]["temp"],
+        "weather": response["result"]["realtime"]["text"],
+        "temperature": response["result"]["realtime"]["temp"],
         # "lonlat": (loca.latitude, loca.longitude),
-        "time": response["last_update"],
+        "time": response["result"]["last_update"],
         }
         
         return json.dumps(weather_info)
