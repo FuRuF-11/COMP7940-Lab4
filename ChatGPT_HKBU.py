@@ -7,6 +7,7 @@ from geopy.geocoders import Nominatim
 
 
 def get_current_weather(location:str):
+
     # 创建地理编码器实例
     geolocator = Nominatim(user_agent="my_geocoder")
 
@@ -19,7 +20,7 @@ def get_current_weather(location:str):
         url = "https://eolink.o.apispace.com/456456/weather/v001/now"
         # 记得处理token
         headers = {
-            "X-APISpace-Token":"la4wnnhrdmjqrv85l78rj16tuju7yfpk"
+            "X-APISpace-Token":"sdasdasdasdasdasdasd"
         }
         payload = {"lonlat" : f"{loca.longitude},{loca.latitude}"}
         response=requests.request("GET", url, params=payload, headers=headers)
@@ -29,7 +30,6 @@ def get_current_weather(location:str):
         "location": location,
         "weather": response["result"]["realtime"]["text"],
         "temperature": response["result"]["realtime"]["temp"],
-        # "lonlat": (loca.latitude, loca.longitude),
         "time": response["result"]["last_update"],
         }
         
